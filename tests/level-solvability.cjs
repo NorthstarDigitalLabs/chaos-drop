@@ -35,7 +35,15 @@ const cssVariables = {};
 const documentElement = { style: { setProperty: (name, value) => { cssVariables[name] = value; } } };
 const noop = () => {};
 const gradient = () => ({ addColorStop: noop });
-const context = new Proxy({ createLinearGradient: gradient, createRadialGradient: gradient }, {
+const drawLog = [];
+const context = new Proxy({
+  createLinearGradient: gradient,
+  createRadialGradient: gradient,
+  roundRect: (...args) => drawLog.push({ op: 'roundRect', args }),
+  fillRect: (...args) => drawLog.push({ op: 'fillRect', args, shadowBlur: context.shadowBlur }),
+  stroke: () => drawLog.push({ op: 'stroke', strokeStyle: context.strokeStyle, shadowBlur: context.shadowBlur, lineWidth: context.lineWidth }),
+  fillText: (text, ...args) => drawLog.push({ op: 'fillText', text, args })
+}, {
   get: (target, key) => target[key] ?? noop,
   set: (target, key, value) => (target[key] = value, true)
 });
@@ -67,6 +75,8 @@ source = source.replace(bootMarker, `
     levels,
     worldThemes,
     worldThemeForLevel,
+    draw,
+    showWonTarget() { state = 'won'; draw(); },
     selectLevel(index) { levelIndex = index; resetLevel(); },
     step(dt) { if (state === 'running') physics(dt); return state; }
   };
@@ -138,4 +148,20 @@ for (const [dx,dy] of [[0,0],[-4,0],[4,0],[0,-4],[0,4]]) {
 }
 
 assert.equal(cssVariables['--world-accent'], game.worldThemes[0].accent, 'active UI palette is applied through CSS variables');
-console.log('All five puzzles have verified player-drawn winning routes; Final Frenzy passes at 30, 45, 60, and 90 FPS.');
+game.selectLevel(0);
+drawLog.length = 0;
+game.draw();
+const normalTarget = drawLog.slice();
+assert.ok(normalTarget.some((call) => call.op === 'fillText' && call.text === 'WINNER'), 'destination box says WINNER before play');
+assert.ok(!normalTarget.some((call) => call.op === 'fillText' && call.text === 'GOAL'), 'old GOAL label is removed');
+const targetGeometry = (calls) => calls.filter((call) => (call.op === 'roundRect' && call.args[1] === 487) || (call.op === 'fillRect' && call.args[1] === 494)).map((call) => [call.op, ...call.args]);
+const normalGeometry = targetGeometry(normalTarget);
+assert.deepEqual(normalGeometry, [['roundRect', 132, 487, 96, 57, 14], ['fillRect', 140, 494, 80, 43]], 'target box dimensions and position remain unchanged');
+drawLog.length = 0;
+game.showWonTarget();
+const wonTarget = drawLog.slice();
+const targetStroke = (calls) => calls.find((call) => call.op === 'stroke' && call.strokeStyle === game.worldThemes[0].accent);
+assert.ok(targetStroke(wonTarget).shadowBlur > targetStroke(normalTarget).shadowBlur, 'WINNER outline glows more intensely after a win');
+assert.ok(wonTarget.some((call) => call.op === 'fillRect' && call.args[1] === 494 && call.shadowBlur > 0), 'WINNER light glows more intensely after a win');
+assert.deepEqual(targetGeometry(wonTarget), normalGeometry, 'win glow does not change target size or position');
+console.log('All five puzzles have verified player-drawn winning routes; Final Frenzy passes at 30, 45, 60, and 90 FPS; WINNER rendering preserves target geometry and intensifies its win-state glow.');
