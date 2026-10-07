@@ -10,6 +10,10 @@
     chapter: document.getElementById('chapter-label'),
     best: document.getElementById('best-score'),
     attempts: document.getElementById('attempts'),
+    levelPickerButton: document.getElementById('level-picker-button'),
+    levelPicker: document.getElementById('level-picker'),
+    levelGrid: document.getElementById('level-grid'),
+    levelPickerClose: document.getElementById('level-picker-close'),
     dots: document.getElementById('level-dots'),
     hint: document.getElementById('instruction-text'),
     drop: document.getElementById('drop-button'),
@@ -27,7 +31,22 @@
     { name:'Split Decision', target:280, stars:[[100,152],[180,284],[284,395]], rails:[[44,205,142,250],[218,235,316,190],[54,362,147,323]], bumpers:[[212,407,302,443]] },
     { name:'The Switchback', target:78, stars:[[270,145],[98,286],[263,420]], rails:[[220,180,318,220],[54,268,151,225],[207,339,307,300]], bumpers:[[82,405,175,438]], hazards:[[164,295,78,22]] },
     { name:'Hot Potato', target:282, stars:[[95,150],[275,260],[114,385]], rails:[[45,225,136,180],[224,210,317,256],[50,330,142,375]], bumpers:[[205,339,303,310],[166,445,252,414]], hazards:[[155,245,52,20]] },
-    { name:'Final Frenzy', target:180, stars:[[90,144],[280,246],[78,365]], rails:[[48,204,139,241],[221,240,312,197],[53,323,144,286],[216,362,310,401]], bumpers:[[125,414,232,438]], hazards:[[151,272,24,22],[75,343,74,20]] }
+    { name:'Final Frenzy', target:180, stars:[[90,144],[280,246],[78,365]], rails:[[48,204,139,241],[221,240,312,197],[53,323,144,286],[216,362,310,401]], bumpers:[[125,414,232,438]], hazards:[[151,272,24,22],[75,343,74,20]] },
+    { name:'Green Switchback', target:280, stars:[[260,145],[95,288],[250,410]], rails:[[45,188,140,230],[220,235,315,190],[70,330,150,295],[230,355,315,390]], hazards:[[148,275,56,20]] },
+    { name:'Orbit Lane', target:78, stars:[[270,150],[110,250],[250,405]], rails:[[210,175,320,215],[48,244,155,210],[190,315,305,350],[52,390,160,355]], hazards:[[165,250,50,18],[185,382,48,18]] },
+    { name:'Spring Street', target:270, stars:[[92,150],[260,255],[110,425]], rails:[[45,205,130,245],[230,205,320,165],[70,360,150,325]], springPads:[[155,285,245,310]], hazards:[[145,385,72,18]] },
+    { name:'Pinch Point', target:180, stars:[[90,150],[275,280],[90,414]], rails:[[65,200,150,240],[295,200,210,240],[80,330,150,295],[280,330,210,295],[95,420,150,390],[265,420,210,390]], hazards:[[155,315,50,18]] },
+    { name:'Emerald Finale', target:260, stars:[[95,145],[270,255],[115,400]], rails:[[45,195,135,230],[220,185,315,220],[65,300,150,265],[300,320,210,355],[85,410,155,375]], hazards:[[155,245,50,18],[155,365,48,18]] },
+    { name:'Blue Horizon', target:82, stars:[[270,155],[100,265],[255,410]], rails:[[220,185,318,220],[48,250,150,218],[205,322,310,290],[55,385,155,420]], hazards:[[165,280,42,18]] },
+    { name:'Cyan Coil', target:278, stars:[[85,155],[275,265],[100,420]], rails:[[52,195,155,225],[220,235,315,200],[55,335,145,300],[235,355,320,390]], springPads:[[145,275,220,300]], hazards:[[160,315,45,18]] },
+    { name:'Moving Current', target:105, stars:[[275,145],[105,270],[255,415]], rails:[[225,190,315,225],[50,260,145,225],[210,355,310,325]], gates:[{x1:130,y1:300,x2:225,y2:300,axis:'x',amplitude:35,speed:1.6,phase:0}], hazards:[[160,380,45,18]] },
+    { name:'Neon Split', target:250, stars:[[95,155],[265,275],[95,420]], rails:[[55,205,145,245],[300,205,215,245],[70,310,150,275],[290,330,210,365],[65,405,145,375]], hazards:[[155,250,48,18]] },
+    { name:'Glass Breaker', target:78, stars:[[265,145],[110,265],[260,420]], rails:[[215,190,315,220],[50,285,145,250],[220,350,315,385]], breakables:[[150,300,220,325]], hazards:[[155,390,50,18]] },
+    { name:'Blue Launch', target:280, stars:[[85,150],[275,255],[100,420]], rails:[[45,205,135,240],[220,205,315,170],[55,345,145,310],[230,365,315,400]], springPads:[[145,275,225,300],[160,420,245,395]], hazards:[[155,315,48,18]] },
+    { name:'Crossfade', target:92, stars:[[270,150],[95,275],[260,420]], rails:[[220,185,315,220],[50,255,145,220],[210,340,310,305]], gates:[{x1:145,y1:305,x2:235,y2:305,axis:'y',amplitude:22,speed:2.1,phase:1.2}], hazards:[[160,375,48,18]] },
+    { name:'Cascade', target:265, stars:[[90,145],[275,265],[95,420]], rails:[[50,190,145,230],[220,225,315,190],[60,320,150,285],[225,350,315,390]], breakables:[[145,260,215,280],[145,390,215,370]], hazards:[[160,305,48,18]] },
+    { name:'Last Light', target:180, stars:[[90,150],[275,265],[85,420]], rails:[[48,195,135,235],[315,195,225,235],[62,300,145,270],[298,310,215,340],[75,405,150,375],[285,410,210,380]], gates:[{x1:135,y1:350,x2:225,y2:350,axis:'x',amplitude:24,speed:1.4,phase:0.7}], hazards:[[155,240,50,18],[155,365,50,18]] },
+    { name:'Cyan Finale', target:278, stars:[[85,150],[280,255],[95,420]], rails:[[45,190,140,230],[220,225,315,190],[60,310,150,275],[300,330,210,365],[70,410,150,380]], springPads:[[145,270,220,295]], gates:[{x1:230,y1:345,x2:310,y2:345,axis:'y',amplitude:20,speed:1.8,phase:0}], breakables:[[150,385,220,365]], hazards:[[155,245,48,18],[155,350,48,18]] }
   ];
   const worldThemes = [
     { name:'NEON GREEN', accent:'#baff63', bright:'#c7ff78', ink:'#16220e', accentGlow:'#baff6366', buttonGlow:'#a1eb4833', rail:'#91a3b8', ball:'#25dfff', ballLight:'#a8f5ff', ballMid:'#ddfcff', ballShade:'#05a8d0', ballGlow:'#25dfff', trail:'42,223,255' },
@@ -38,7 +57,10 @@
   ];
   const savedBest = Number(localStorage.getItem('chaosDropBest') || 0);
   let best = Number.isFinite(savedBest) ? savedBest : 0;
-  let levelIndex = Math.min(Number(localStorage.getItem('chaosDropLevel') || 0), levels.length - 1);
+  const savedLevelIndex = Math.max(0, Number(localStorage.getItem('chaosDropLevel') || 0) || 0);
+  const savedUnlock = Math.max(1, Number(localStorage.getItem('chaosDropUnlocked') || 1) || 1);
+  let highestUnlockedLevel = Math.min(levels.length, Math.max(savedUnlock, Math.min(savedLevelIndex + 1, levels.length)));
+  let levelIndex = Math.min(savedLevelIndex, highestUnlockedLevel - 1, levels.length - 1);
   let attemptsLeft = 3;
   let state = 'ready';
   let ball = { x:180, y:42, vx:0, vy:0, r:11 };
@@ -52,6 +74,7 @@
   let toastTimer = 0;
   let particles = [];
   let trail = [];
+  let brokenSegments = new Set();
 
   function level() { return levels[levelIndex]; }
   function worldThemeForLevel(levelNumber) {
@@ -96,15 +119,17 @@
     }
     ui.dots.replaceChildren();
     for (let i=0;i<levels.length;i++) {
-      const d=document.createElement('i'); d.className=`level-dot ${i===levelIndex?'active':''}`; ui.dots.append(d);
+      const d=document.createElement('i'); d.className=`level-dot ${i===levelIndex?'active':''} ${i<highestUnlockedLevel?'unlocked':''}`; ui.dots.append(d);
     }
+    ui.levelPickerButton.textContent=`LEVELS · ${String(levelIndex+1).padStart(2,'0')}/${String(levels.length).padStart(2,'0')}`;
+    ui.levelPickerButton.disabled=state==='running';
     ui.drop.disabled = state === 'running' || state === 'won' || state === 'lost';
     ui.drop.innerHTML = state === 'running' ? 'IN MOTION <span>◌</span>' : 'DROP IT <span>↓</span>';
     ui.hint.textContent = state === 'running' ? 'Watch the chain reaction!' : state === 'ready' ? 'Draw one bumper, then drop the ball.' : 'Reset to try a new bumper.';
   }
   function newTry() {
     state='ready'; ball={x:180,y:42,vx:0,vy:0,r:11}; drawnBumper=null; dragStart=null; dragNow=null;
-    collected=new Set(); elapsed=0; trail=[]; particles=[]; ui.result.classList.add('hidden'); renderUi();
+    collected=new Set(); brokenSegments=new Set(); elapsed=0; trail=[]; particles=[]; ui.result.classList.add('hidden'); renderUi();
   }
   function resetLevel() { attemptsLeft=3; score=0; newTry(); showToast('Fresh board. Find a new route!'); }
   function finish(won) {
@@ -113,8 +138,10 @@
       const points=100 + collected.size*50 + attemptsLeft*25;
       score += points;
       best=Math.max(best,score);
+      highestUnlockedLevel=Math.max(highestUnlockedLevel,Math.min(levels.length,levelIndex+2));
       localStorage.setItem('chaosDropBest',String(best));
       localStorage.setItem('chaosDropLevel',String(Math.min(levelIndex+1,levels.length-1)));
+      localStorage.setItem('chaosDropUnlocked',String(highestUnlockedLevel));
       spawnParticles(level().target,510,theme().accent,24);
       ui.resultIcon.textContent='✦'; ui.resultTitle.textContent='Beautiful chaos!';
       ui.resultCopy.textContent=`Puzzle cleared · ${collected.size}/3 sparks · +${points} points`;
@@ -134,6 +161,28 @@
     }
     renderUi();
   }
+
+  function openLevelPicker() {
+    ui.levelGrid.replaceChildren();
+    levels.forEach((puzzle,index)=>{
+      const tile=document.createElement('button');
+      tile.type='button'; tile.className=`level-tile ${index===levelIndex?'current':''} ${index<highestUnlockedLevel?'':'locked'}`;
+      tile.textContent=String(index+1).padStart(2,'0'); tile.disabled=index>=highestUnlockedLevel;
+      tile.setAttribute?.('aria-label',index<highestUnlockedLevel?`Level ${index+1}: ${puzzle.name}`:`Level ${index+1} locked`);
+      tile.addEventListener('click',()=>{
+        if(index>=highestUnlockedLevel)return;
+        levelIndex=index; localStorage.setItem('chaosDropLevel',String(index));
+        ui.levelPicker.classList.add('hidden'); resetLevel();
+      });
+      ui.levelGrid.append(tile);
+    });
+    ui.levelPicker.classList.remove('hidden');
+  }
+  ui.levelPickerButton.addEventListener('click',openLevelPicker);
+  ui.levelPickerClose.addEventListener('click',()=>ui.levelPicker.classList.add('hidden'));
+  ui.levelPicker.addEventListener('click',(event)=>{
+    if(event.target===ui.levelPicker)ui.levelPicker.classList.add('hidden');
+  });
 
   function onPointerDown(e) {
     if (state!=='ready') return;
@@ -181,12 +230,17 @@
     const t=Math.max(0,Math.min(1,((ball.x-s[0])*dx+(ball.y-s[1])*dy)/l2));
     const px=s[0]+t*dx, py=s[1]+t*dy;
     let nx=ball.x-px, ny=ball.y-py; const dist=Math.hypot(nx,ny);
-    if (dist>=ball.r || dist===0) return;
+    if (dist>=ball.r || dist===0) return false;
     nx/=dist; ny/=dist;
     ball.x=px+nx*(ball.r+.2); ball.y=py+ny*(ball.r+.2);
     const vn=ball.vx*nx+ball.vy*ny;
     if (vn<0) { ball.vx-=(1+restitution)*vn*nx; ball.vy-=(1+restitution)*vn*ny; ball.vx*=.985; ball.vy*=.985; }
     spawnParticles(px,py,theme().accent,4);
+    return true;
+  }
+  function movingGateSegment(gate) {
+    const shift=Math.sin(elapsed*gate.speed+gate.phase)*gate.amplitude;
+    return gate.axis==='y'?[gate.x1,gate.y1+shift,gate.x2,gate.y2+shift]:[gate.x1+shift,gate.y1,gate.x2+shift,gate.y2];
   }
   function physics(dt) {
     const l=level(); elapsed+=dt;
@@ -195,8 +249,15 @@
     if (ball.x<24+ball.r) { ball.x=24+ball.r; ball.vx=Math.abs(ball.vx)*.72; }
     if (ball.x>336-ball.r) { ball.x=336-ball.r; ball.vx=-Math.abs(ball.vx)*.72; }
     const segments=l.rails.map(a=>a.slice());
+    l.gates?.forEach(g=>segments.push(movingGateSegment(g)));
     if (drawnBumper) segments.push([drawnBumper.x1,drawnBumper.y1,drawnBumper.x2,drawnBumper.y2]);
     segments.forEach(s=>collideSegment(s));
+    l.springPads?.forEach(s=>collideSegment(s,1.08));
+    l.breakables?.forEach((s,i)=>{
+      if(!brokenSegments.has(i)&&collideSegment(s,0.78)){
+        brokenSegments.add(i); spawnParticles((s[0]+s[2])/2,(s[1]+s[3])/2,'#ffc66d',18);
+      }
+    });
     l.hazards?.forEach(([x,y,w,h])=>{
       if (ball.x+ball.r>x && ball.x-ball.r<x+w && ball.y+ball.r>y && ball.y-ball.r<y+h) {
         state='impact'; spawnParticles(ball.x,ball.y,'#ff6a65',20); finish(false);
@@ -229,6 +290,16 @@
     ctx.fillStyle='#ffffff10';ctx.beginPath();ctx.roundRect(148,13,64,40,12);ctx.fill();
     ctx.shadowColor=theme().ballGlow;ctx.shadowBlur=14;ctx.fillStyle=theme().ball;ctx.beginPath();ctx.arc(180,42,11,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(176,38,3,0,Math.PI*2);ctx.fill();
     level().rails.forEach(s=>drawSegment(s,theme().rail,7,4));
+    level().gates?.forEach(g=>drawSegment(movingGateSegment(g),theme().bright,7,10));
+    level().springPads?.forEach(s=>{
+      drawSegment(s,theme().ball,9,13);
+      const mx=(s[0]+s[2])/2,my=(s[1]+s[3])/2;ctx.fillStyle=theme().ballLight;
+      for(let i=-1;i<=1;i++){ctx.beginPath();ctx.arc(mx+i*12,my,2.5,0,Math.PI*2);ctx.fill();}
+    });
+    level().breakables?.forEach((s,i)=>{
+      if(brokenSegments.has(i))return;
+      drawSegment(s,'#ffc66d',8,9);ctx.fillStyle='#1c1b27';ctx.font='800 10px system-ui';ctx.textAlign='center';ctx.fillText('×',(s[0]+s[2])/2,(s[1]+s[3])/2+3);
+    });
     level().hazards?.forEach(([x,y,w,h])=>{
       const g=ctx.createLinearGradient(x,y,x+w,y+h);g.addColorStop(0,'#fb5f5a');g.addColorStop(1,'#ff9c51');ctx.shadowColor='#ff655d';ctx.shadowBlur=7;ctx.fillStyle=g;ctx.beginPath();ctx.roundRect(x,y,w,h,8);ctx.fill();ctx.shadowBlur=0;
       ctx.fillStyle='#fff6'; for(let k=0;k<4;k++){ctx.beginPath();ctx.arc(x+11+k*16,y+h/2,2,0,Math.PI*2);ctx.fill();}

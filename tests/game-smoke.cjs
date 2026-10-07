@@ -13,8 +13,9 @@ class Element {
   dispatch(name,event) { this.listeners[name]?.(event); }
 }
 
-const ids=['board','level-title','chapter-label','best-score','attempts','level-dots','instruction-text','drop-button','reset-button','toast','result','result-icon','result-title','result-copy','result-button'];
+const ids=['board','level-title','chapter-label','best-score','attempts','level-dots','level-picker-button','level-picker','level-grid','level-picker-close','instruction-text','drop-button','reset-button','toast','result','result-icon','result-title','result-copy','result-button'];
 const elements=Object.fromEntries(ids.map(id=>[id,new Element(id)]));
+const savedProgress=new Map();
 const canvas=elements.board;
 const noop=()=>{};
 function gradient() { return {addColorStop:noop}; }
@@ -26,14 +27,19 @@ const sandbox={
   document:{documentElement:{style:{setProperty:noop}},getElementById:id=>elements[id],createElement:()=>new Element()},
   window:{devicePixelRatio:1,addEventListener:noop},
   ResizeObserver:class{observe(){ }},
-  localStorage:{getItem:()=>null,setItem:noop},
+  localStorage:{getItem:key=>savedProgress.get(key)??null,setItem:(key,value)=>savedProgress.set(key,String(value))},
   requestAnimationFrame:fn=>raf.push(fn),
   performance:{now:()=>1000},
   setTimeout:()=>1,clearTimeout:noop,console,Math,Number,String,Set,JSON
 };
 vm.runInNewContext(fs.readFileSync('app/src/main/assets/game.js','utf8'),sandbox,{filename:'game.js'});
 const frame=raf.shift(); assert.equal(typeof frame,'function'); frame(16);
-assert.equal(elements['level-dots'].children.length,5,'five puzzles are available');
+assert.equal(elements['level-dots'].children.length,20,'twenty puzzles are available');
+elements['level-picker-button'].click();
+assert.equal(elements['level-grid'].children.length,20,'selector lists all twenty levels');
+assert.equal(elements['level-grid'].children[0].disabled,false,'level one is available at start');
+assert.equal(elements['level-grid'].children[1].disabled,true,'later levels stay locked until a win');
+elements['level-picker-close'].click();
 elements['drop-button'].click();
 assert.match(elements.toast.textContent,/Draw your bumper first/,'drop requires a bumper');
 canvas.dispatch('pointerdown',{clientX:70,clientY:120,pointerId:1});
@@ -56,5 +62,12 @@ assert.equal(elements['result'].classList.contains('hidden'),false,'a ball that 
 assert.match(elements['result-title'].textContent,/Beautiful chaos/,'win feedback is shown');
 assert.ok(Number(elements['best-score'].textContent)>0,'a successful puzzle updates the score');
 elements['result-button'].click();
-assert.match(elements['chapter-label'].textContent,/02 \/ 05/,'next puzzle advances progression');
+assert.match(elements['chapter-label'].textContent,/PUZZLE 02 \/ 20/,'next puzzle advances progression');
+assert.equal(savedProgress.get('chaosDropLevel'),'1','current puzzle is saved locally');
+assert.equal(savedProgress.get('chaosDropUnlocked'),'2','winning unlocks the next puzzle');
+elements['level-picker-button'].click();
+assert.equal(elements['level-grid'].children[1].disabled,false,'newly won puzzle is selectable');
+elements['level-grid'].children[1].click();
+assert.equal(elements['level-title'].textContent,'Split Decision','selecting an unlocked puzzle loads it');
+assert.equal(savedProgress.get('chaosDropLevel'),'1','manual level selection is saved locally');
 console.log('Chaos Drop game smoke test passed.');

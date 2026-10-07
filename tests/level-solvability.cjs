@@ -27,10 +27,12 @@ class Element {
 
 const ids = [
   'board', 'level-title', 'chapter-label', 'best-score', 'attempts', 'level-dots',
+  'level-picker-button', 'level-picker', 'level-grid', 'level-picker-close',
   'instruction-text', 'drop-button', 'reset-button', 'toast', 'result', 'result-icon',
   'result-title', 'result-copy', 'result-button'
 ];
 const elements = Object.fromEntries(ids.map((id) => [id, new Element()]));
+const savedProgress = new Map([['chaosDropLevel','9'],['chaosDropUnlocked','10']]);
 const cssVariables = {};
 const documentElement = { style: { setProperty: (name, value) => { cssVariables[name] = value; } } };
 const noop = () => {};
@@ -54,7 +56,7 @@ const sandbox = {
   document: { documentElement, getElementById: (id) => elements[id], createElement: () => new Element() },
   window: { devicePixelRatio: 1, addEventListener: noop },
   ResizeObserver: class { observe() {} },
-  localStorage: { getItem: () => null, setItem: noop },
+  localStorage: { getItem: (key) => savedProgress.get(key) ?? null, setItem: (key,value) => savedProgress.set(key,String(value)) },
   requestAnimationFrame: (callback) => raf.push(callback),
   performance: { now: () => 0 },
   setTimeout: () => 1,
@@ -77,6 +79,29 @@ source = source.replace(bootMarker, `
     worldThemeForLevel,
     draw,
     showWonTarget() { state = 'won'; draw(); },
+    playLine(index,line,fps=60) {
+      levelIndex=index; resetLevel();
+      const [x1,y1,x2,y2]=line;
+      onPointerDown({clientX:x1,clientY:y1,pointerId:7});
+      onPointerUp({clientX:x2,clientY:y2,pointerId:7});
+      ui.drop.listeners.click({});
+      for(let frame=0;frame<fps*12&&state==='running';frame++)physics(1/fps);
+      return state;
+    },
+    gatePosition(index,time) { levelIndex=index; const previous=elapsed; elapsed=time; const segment=movingGateSegment(level().gates[0]); elapsed=previous; return segment; },
+    springImpulse(index) {
+      const s=levels[index].springPads[0],dx=s[2]-s[0],dy=s[3]-s[1],len=Math.hypot(dx,dy),nx=-dy/len,ny=dx/len;
+      const px=(s[0]+s[2])/2,py=(s[1]+s[3])/2;ball={x:px+nx*8,y:py+ny*8,vx:-nx*100,vy:-ny*100,r:11};
+      const hit=collideSegment(s,1.08);return {hit,rebound:ball.vx*nx+ball.vy*ny};
+    },
+    breakableHit(index) {
+      levelIndex=index;elapsed=0;brokenSegments=new Set();state='running';
+      const s=levels[index].breakables[0],dx=s[2]-s[0],dy=s[3]-s[1],len=Math.hypot(dx,dy),nx=-dy/len,ny=dx/len;
+      const px=(s[0]+s[2])/2,py=(s[1]+s[3])/2;ball={x:px-nx*10,y:py-ny*10,vx:nx*100,vy:ny*100,r:11};
+      physics(.016);return brokenSegments.has(0);
+    },
+    getState() { return { levelIndex, state, highestUnlockedLevel, score, theme:theme().name, title:level().name }; },
+    clickNext() { ui.resultButton.listeners?.click?.({}); },
     selectLevel(index) { levelIndex = index; resetLevel(); },
     step(dt) { if (state === 'running') physics(dt); return state; }
   };
@@ -89,14 +114,27 @@ const witnesses = [
   { name: 'Split Decision', line: [252.2, 112.8, 184.7, 115.0] },
   { name: 'The Switchback', line: [233.4, 172.1, 181.5, 258.3] },
   { name: 'Hot Potato', line: [165.6, 176.6, 186.7, 222.7] },
-  { name: 'Final Frenzy', line: [231.99, 170.67, 132.16, 174.06] }
+  { name: 'Final Frenzy', line: [231.99, 170.67, 132.16, 174.06] },
+  { name: 'Green Switchback', line: [179.98, 199.57, 114.13, 123.41] },
+  { name: 'Orbit Lane', line: [154.93, 197.25, 196.36, 136.36] },
+  { name: 'Spring Street', line: [209.58, 104.72, 165.84, 94.36] },
+  { name: 'Pinch Point', line: [136.92, 322.55, 187.84, 248.56] },
+  { name: 'Emerald Finale', line: [219.41, 255.38, 127.69, 206.61] },
+  { name: 'Blue Horizon', line: [149.39, 179.73, 186.34, 168.09] },
+  { name: 'Cyan Coil', line: [185.42, 269.87, 200, 346.2] },
+  { name: 'Moving Current', line: [192.65, 126.13, 153.71, 79.34] },
+  { name: 'Neon Split', line: [152.27, 187.94, 242.6, 208.02] },
+  { name: 'Glass Breaker', line: [219.8, 286.89, 237.44, 199.01] },
+  { name: 'Blue Launch', line: [203.36, 191.79, 148.72, 133.54] },
+  { name: 'Crossfade', line: [206.67, 97.21, 168.05, 76] },
+  { name: 'Cascade', line: [206.86, 173.86, 146, 149.21] },
+  { name: 'Last Light', line: [143.71, 128.15, 207.76, 155.36] },
+  { name: 'Cyan Finale', line: [178.42, 232.54, 170.62, 172.5] }
 ];
 
-assert.equal(game.levels.length, witnesses.length, 'all five prototype puzzles are covered');
+assert.equal(game.levels.length, witnesses.length, 'all 20 alpha puzzles are covered');
 const worldBoundaries = [
-  [1, 'NEON GREEN'], [10, 'NEON GREEN'], [11, 'NEON CYAN'], [20, 'NEON CYAN'],
-  [21, 'NEON PURPLE'], [30, 'NEON PURPLE'], [31, 'NEON MAGENTA'], [40, 'NEON MAGENTA'],
-  [41, 'NEON ORANGE'], [50, 'NEON ORANGE']
+  [1, 'NEON GREEN'], [5, 'NEON GREEN'], [10, 'NEON GREEN'], [11, 'NEON CYAN'], [20, 'NEON CYAN']
 ];
 for (const [levelNumber, expectedWorld] of worldBoundaries) {
   assert.equal(game.worldThemeForLevel(levelNumber).name, expectedWorld, `level ${levelNumber} inherits its ten-level world palette`);
@@ -108,6 +146,24 @@ for (const palette of game.worldThemes) {
   const distance = Math.hypot(...rgb(palette.ball).map((value, i) => value - rgb(palette.accent)[i]));
   assert.ok(distance > 180, `${palette.name} ball and world colors remain visually distinct`);
 }
+assert.equal(game.getState().levelIndex,9,'saved Level 10 progress resumes at Level 10');
+assert.equal(game.playLine(9,witnesses[9].line,60),'won','Level 10 has a legitimate finishing route');
+assert.match(elements['result-button'].innerHTML,/ENTER NEON CYAN/,'Level 10 completion previews the new world');
+elements['result-button'].click();
+assert.match(elements['chapter-label'].textContent,/WORLD 02 · PUZZLE 11 \/ 20/,'Level 10 completion advances into Level 11');
+assert.equal(cssVariables['--world-accent'],game.worldThemes[1].accent,'Level 11 changes to the cyan world palette');
+assert.match(elements.toast.textContent,/NEON CYAN world unlocked/,'world transition is announced to the player');
+assert.equal(savedProgress.get('chaosDropUnlocked'),'11','Level 10 win saves Level 11 as unlocked');
+assert.equal(savedProgress.get('chaosDropLevel'),'10','Level 11 is saved as the current puzzle');
+const gateAtStart=game.gatePosition(12,0),gateLater=game.gatePosition(12,.6);
+assert.notDeepEqual(gateAtStart,gateLater,'moving obstacle changes position with elapsed time');
+for(const index of [7,11]){
+  const impulse=game.springImpulse(index);
+  assert.equal(impulse.hit,true,`${game.levels[index].name} spring pad registers a collision`);
+  assert.ok(impulse.rebound>100,`${game.levels[index].name} spring pad launches the ball with added bounce`);
+}
+for(const index of [14,17,19]) assert.ok(game.levels[index].breakables.length,'breakable objects appear in later puzzles');
+assert.equal(game.breakableHit(14),true,'Glass Breaker removes a struck breakable rail');
 const stylesheet = fs.readFileSync('app/src/main/assets/style.css', 'utf8');
 assert.match(stylesheet, /\.primary-button[^{]*\{[^}]*var\(--world-accent\)/, 'interactive controls inherit the active world palette');
 
@@ -118,18 +174,10 @@ for (let index = 0; index < witnesses.length; index++) {
   assert.ok(length >= 24 && length <= 108, `${witnesses[index].name}: bumper obeys the draw limit`);
   assert.ok(y1 >= 74 && y1 <= 500, `${witnesses[index].name}: bumper starts inside the touch area`);
 
-  const frameRates = index === 4 ? [30, 45, 60, 90] : [30, 60];
+  const frameRates = index === 4 ? [30, 45, 60, 90] : index < 5 ? [30, 60] : [60];
   for (const fps of frameRates) {
-    game.selectLevel(index);
-    elements.board.dispatch('pointerdown', { clientX: x1, clientY: y1, pointerId: 1 });
-    elements.board.dispatch('pointerup', { clientX: x2, clientY: y2, pointerId: 1 });
-    elements['drop-button'].click();
-    assert.equal(game.step(1 / fps), 'running', `${witnesses[index].name}: drop starts at ${fps} FPS`);
-
-    let state = 'running';
-    for (let frame = 0; frame < fps * 12 && state === 'running'; frame++) {
-      state = game.step(1 / fps);
-    }
+    const state=game.playLine(index,witnesses[index].line,fps);
+    assert.equal(elements['level-title'].textContent,witnesses[index].name,`${witnesses[index].name}: level loads in the UI`);
     assert.equal(state, 'won', `${witnesses[index].name}: a valid drawn bumper wins at ${fps} FPS`);
   }
 }
@@ -164,4 +212,25 @@ const targetStroke = (calls) => calls.find((call) => call.op === 'stroke' && cal
 assert.ok(targetStroke(wonTarget).shadowBlur > targetStroke(normalTarget).shadowBlur, 'WINNER outline glows more intensely after a win');
 assert.ok(wonTarget.some((call) => call.op === 'fillRect' && call.args[1] === 494 && call.shadowBlur > 0), 'WINNER light glows more intensely after a win');
 assert.deepEqual(targetGeometry(wonTarget), normalGeometry, 'win glow does not change target size or position');
-console.log('All five puzzles have verified player-drawn winning routes; Final Frenzy passes at 30, 45, 60, and 90 FPS; WINNER rendering preserves target geometry and intensifies its win-state glow.');
+assert.equal(game.playLine(9,witnesses[9].line,60),'won','Level 10 remains winnable before a progression reload');
+elements['result-button'].click();
+assert.equal(savedProgress.get('chaosDropLevel'),'10','Level 11 remains the saved current level after the transition');
+const reloadElements=Object.fromEntries(ids.map((id)=>[id,new Element()]));
+const reloadVariables={};
+const reloadContext=new Proxy({createLinearGradient:gradient,createRadialGradient:gradient},{get:(target,key)=>target[key]??noop,set:(target,key,value)=>(target[key]=value,true)});
+reloadElements.board.getContext=()=>reloadContext;
+const reloadRaf=[];
+const reloadSandbox={
+  document:{documentElement:{style:{setProperty:(key,value)=>reloadVariables[key]=value}},getElementById:(id)=>reloadElements[id],createElement:()=>new Element()},
+  window:{devicePixelRatio:1,addEventListener:noop},ResizeObserver:class{observe(){}},
+  localStorage:{getItem:(key)=>savedProgress.get(key)??null,setItem:(key,value)=>savedProgress.set(key,String(value))},
+  requestAnimationFrame:(callback)=>reloadRaf.push(callback),performance:{now:()=>0},setTimeout:()=>1,clearTimeout:noop,console,Math,Number,String,Set,JSON
+};
+vm.runInNewContext(source,reloadSandbox,{filename:'game-reload.js'});
+assert.match(reloadElements['chapter-label'].textContent,/WORLD 02 · PUZZLE 11 \/ 20/,'reopening the game restores the saved current level');
+assert.equal(reloadElements['level-title'].textContent,'Blue Horizon','reopening restores the correct puzzle');
+assert.equal(reloadVariables['--world-accent'],game.worldThemes[1].accent,'reopened progress restores the cyan palette');
+reloadElements['level-picker-button'].click();
+assert.equal(reloadElements['level-grid'].children.length,20,'reopened level selector contains every puzzle');
+assert.equal(reloadElements['level-grid'].children[10].disabled,false,'reopened progress keeps Level 11 unlocked');
+console.log('All 20 alpha puzzles have verified player-drawn winning routes; progression, Level 10→11 theme transition, local save data, moving gates, spring launches, breakable rails, and WINNER glow are verified.');

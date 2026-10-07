@@ -14,12 +14,13 @@
       <div class="score-pill"><span>BEST</span><b id="best-score">0</b></div>
     </header>
     <section class="level-row">
-      <div><small id="chapter-label">PUZZLE 01 / 05</small><h1 id="level-title">First Bounce</h1></div>
-      <div class="attempts" id="attempts" aria-label="Attempts"></div>
+      <div><small id="chapter-label">WORLD 01 · PUZZLE 01 / 20</small><h1 id="level-title">First Bounce</h1></div>
+      <div class="level-tools"><button id="level-picker-button" class="level-picker-button" type="button">LEVELS · 01/20</button><div class="attempts" id="attempts" aria-label="Attempts"></div></div>
     </section>
     <div class="board-wrap"><canvas id="board" aria-label="Chaos Drop game board"></canvas>
       <div id="toast" class="toast" aria-live="polite"></div>
       <div id="result" class="result hidden"><div class="result-card"><div id="result-icon" class="result-icon">✦</div><h2 id="result-title">Nice!</h2><p id="result-copy"></p><button id="result-button" class="primary-button">NEXT PUZZLE <span>→</span></button></div></div>
+      <div id="level-picker" class="level-picker hidden" aria-label="Choose a puzzle"><section class="level-picker-card"><div class="picker-heading"><h2>CHOOSE PUZZLE</h2><button id="level-picker-close" type="button" aria-label="Close puzzle selection">×</button></div><p>New puzzles unlock as you win.</p><div id="level-grid" class="level-grid"></div></section></div>
     </div>
     <section class="controls">
       <div class="instruction"><span class="finger">↗</span><span id="instruction-text">Draw one bumper, then drop the ball.</span></div>
