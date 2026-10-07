@@ -34,6 +34,8 @@ jobs:
         run: node --check app/src/main/assets/game.js
       - name: Smoke test touch controls and retry flow
         run: node tests/game-smoke.cjs
+      - name: Verify winning routes for all five puzzles at 30 and 60 FPS
+        run: node tests/level-solvability.cjs
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
       - name: Verify launcher activity is packaged
@@ -54,7 +56,7 @@ jobs:
       - name: Save installable debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: chaos-drop-debug-apk-v0.1.1
+          name: chaos-drop-debug-apk-v0.1.2
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 3
