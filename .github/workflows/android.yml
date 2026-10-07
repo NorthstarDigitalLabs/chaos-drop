@@ -36,10 +36,25 @@ jobs:
         run: node tests/game-smoke.cjs
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
+      - name: Verify launcher activity is packaged
+        run: |
+          python3 - <<'PY'
+          from zipfile import ZipFile
+
+          apk = "app/build/outputs/apk/debug/app-debug.apk"
+          expected = b"Lcom/northstardigitallabs/chaosdrop/MainActivity;"
+          with ZipFile(apk) as archive:
+              dex_files = [name for name in archive.namelist() if name.endswith(".dex")]
+              assert dex_files, "APK contains no DEX bytecode"
+              assert any(expected in archive.read(name) for name in dex_files), (
+                  "Launcher activity is missing from APK DEX bytecode"
+              )
+          print("Launcher activity is present in APK DEX bytecode.")
+          PY
       - name: Save installable debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: chaos-drop-debug-apk
+          name: chaos-drop-debug-apk-v0.1.1
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 3
