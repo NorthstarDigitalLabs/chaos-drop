@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0c111e">
+  <title>Chaos Drop</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="game-shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">C</span><div><strong>CHAOS DROP</strong><small>tiny puzzles · big reactions</small></div></div>
+      <div class="score-pill"><span>BEST</span><b id="best-score">0</b></div>
+    </header>
+    <section class="level-row">
+      <div><small id="chapter-label">PUZZLE 01 / 05</small><h1 id="level-title">First Bounce</h1></div>
+      <div class="attempts" id="attempts" aria-label="Attempts"></div>
+    </section>
+    <div class="board-wrap"><canvas id="board" aria-label="Chaos Drop game board"></canvas>
+      <div id="toast" class="toast" aria-live="polite"></div>
+      <div id="result" class="result hidden"><div class="result-card"><div id="result-icon" class="result-icon">✦</div><h2 id="result-title">Nice!</h2><p id="result-copy"></p><button id="result-button" class="primary-button">NEXT PUZZLE <span>→</span></button></div></div>
+    </div>
+    <section class="controls">
+      <div class="instruction"><span class="finger">↗</span><span id="instruction-text">Draw one bumper, then drop the ball.</span></div>
+      <div class="button-row"><button id="reset-button" class="secondary-button">↻ <span>RESET</span></button><button id="drop-button" class="primary-button">DROP IT <span>↓</span></button></div>
+      <div class="level-dots" id="level-dots"></div>
+    </section>
+    <footer>DRAG A LINE TO ADD A BUMPER · GUIDE THE ORB HOME</footer>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
