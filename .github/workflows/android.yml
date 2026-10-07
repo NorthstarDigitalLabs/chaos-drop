@@ -1,0 +1,45 @@
+name: Android prototype
+
+on:
+  push:
+    branches: [main, "prototype/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.11"
+          cache-provider: basic
+      - name: Check game JavaScript syntax
+        run: node --check app/src/main/assets/game.js
+      - name: Smoke test touch controls and retry flow
+        run: node tests/game-smoke.cjs
+      - name: Build debug APK
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Save installable debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: chaos-drop-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 3
