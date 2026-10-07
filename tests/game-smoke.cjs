@@ -23,7 +23,7 @@ canvas.getContext=()=>ctx2d;
 canvas.width=360; canvas.height=560;
 const raf=[];
 const sandbox={
-  document:{getElementById:id=>elements[id],createElement:()=>new Element()},
+  document:{documentElement:{style:{setProperty:noop}},getElementById:id=>elements[id],createElement:()=>new Element()},
   window:{devicePixelRatio:1,addEventListener:noop},
   ResizeObserver:class{observe(){ }},
   localStorage:{getItem:()=>null,setItem:noop},

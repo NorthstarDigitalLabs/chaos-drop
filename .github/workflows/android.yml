@@ -56,7 +56,7 @@ jobs:
       - name: Save installable debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: chaos-drop-debug-apk-v0.1.2
+          name: chaos-drop-debug-apk-v0.1.3
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 3

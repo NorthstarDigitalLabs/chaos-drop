@@ -9,7 +9,7 @@ Chaos Drop is an original, mobile-first physics puzzle prototype. The Android ap
 3. Use the bumper and the level's rails to collect sparks and guide the orb into the goal cup.
 4. You have three drops per puzzle. Reset and try a different bumper, then continue through five handmade puzzles.
 
-The prototype includes gravity, bounces, hazards, collectibles, scoring, saved best score/current puzzle, retry, and next-puzzle controls. All visuals are drawn from original shapes in Canvas.
+The prototype includes gravity, bounces, hazards, collectibles, scoring, saved best score/current puzzle, retry, and next-puzzle controls. Its reusable neon world palettes change every ten levels while the ball uses a contrasting color; the dark background keeps the board readable. All visuals are drawn from original shapes in Canvas.
 
 ## Build
 
@@ -19,7 +19,7 @@ The Android project uses Java 17, Gradle 8.11, and Android Gradle Plugin 8.7.3. 
 gradle --no-daemon :app:assembleDebug
 ```
 
-The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. GitHub Actions checks the game script and builds that APK on pushes, pull requests, or a manual workflow run. The workflow retains its APK artifact for three days.
+The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. GitHub Actions checks the game script, touch flow, and real physics-based winning routes before building that APK on pushes, pull requests, or a manual workflow run. The workflow retains its APK artifact for three days.
 
 ## Project layout
 
@@ -27,4 +27,5 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`. GitHub 
 - `app/src/main/assets/index.html` — game screen and accessible controls.
 - `app/src/main/assets/style.css` — responsive portrait UI.
 - `app/src/main/assets/game.js` — original physics puzzle, five levels, rendering, and progression.
+- `app/src/main/assets/style.css` — mobile layout and theme-variable-driven controls.
 - `.github/workflows/android.yml` — syntax check and free standard-runner debug build.
