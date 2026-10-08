@@ -1,4 +1,4 @@
-name: Android prototype
+name: Android beta
 
 on:
   push:
@@ -32,9 +32,9 @@ jobs:
           cache-provider: basic
       - name: Check game JavaScript syntax
         run: node --check app/src/main/assets/game.js
-      - name: Smoke test touch controls and retry flow
+      - name: Test menus, progression, audio, touch controls, and retry flow
         run: node tests/game-smoke.cjs
-      - name: Verify winning routes and WINNER rendering across frame rates
+      - name: Verify all 20 winning routes, progression, and WINNER rendering
         run: node tests/level-solvability.cjs
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
@@ -56,7 +56,7 @@ jobs:
       - name: Save installable debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: chaos-drop-debug-apk-v0.2.0
+          name: chaos-drop-debug-apk-v0.3.0
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 3

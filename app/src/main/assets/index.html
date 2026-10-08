@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0c111e">
+  <meta name="description" content="An original neon physics puzzle game. Draw a bumper, drop the orb, and guide it to WINNER.">
   <title>Chaos Drop</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -11,23 +12,62 @@
   <main class="game-shell">
     <header class="topbar">
       <div class="brand"><span class="brand-mark">C</span><div><strong>CHAOS DROP</strong><small>tiny puzzles · big reactions</small></div></div>
-      <div class="score-pill"><span>BEST</span><b id="best-score">0</b></div>
+      <div class="top-actions">
+        <button id="sound-toggle" class="sound-toggle" type="button" aria-label="Turn sound off">♪ SOUND ON</button>
+        <div class="score-pill"><span>BEST</span><b id="best-score">0</b></div>
+      </div>
     </header>
-    <section class="level-row">
-      <div><small id="chapter-label">WORLD 01 · PUZZLE 01 / 20</small><h1 id="level-title">First Bounce</h1></div>
-      <div class="level-tools"><button id="level-picker-button" class="level-picker-button" type="button">LEVELS · 01/20</button><div class="attempts" id="attempts" aria-label="Attempts"></div></div>
+
+    <section id="home-screen" class="menu-screen home-screen">
+      <div class="home-hero">
+        <div class="hero-orb" aria-hidden="true"><span></span></div>
+        <small class="eyebrow">20 NEON PHYSICS PUZZLES</small>
+        <h1>DROP INTO<br><em>CHAOS</em></h1>
+        <p>Draw one bumper. Start a chain reaction.<br>Guide the orb into <strong>WINNER</strong>.</p>
+        <div class="home-actions">
+          <button id="play-button" class="primary-button" type="button">START GAME <span>→</span></button>
+          <button id="home-levels-button" class="secondary-button menu-secondary" type="button">LEVEL SELECT</button>
+        </div>
+        <div id="home-progress" class="home-progress">LEVEL 01 · NEON GREEN WORLD</div>
+      </div>
+      <div class="world-preview" aria-label="Two neon worlds">
+        <div class="world-chip green-chip"><i></i><span>01–10<br><b>NEON GREEN</b></span></div>
+        <div class="world-chip cyan-chip"><i></i><span>11–20<br><b>NEON CYAN</b></span></div>
+      </div>
     </section>
-    <div class="board-wrap"><canvas id="board" aria-label="Chaos Drop game board"></canvas>
-      <div id="toast" class="toast" aria-live="polite"></div>
-      <div id="result" class="result hidden"><div class="result-card"><div id="result-icon" class="result-icon">✦</div><h2 id="result-title">Nice!</h2><p id="result-copy"></p><button id="result-button" class="primary-button">NEXT PUZZLE <span>→</span></button></div></div>
-      <div id="level-picker" class="level-picker hidden" aria-label="Choose a puzzle"><section class="level-picker-card"><div class="picker-heading"><h2>CHOOSE PUZZLE</h2><button id="level-picker-close" type="button" aria-label="Close puzzle selection">×</button></div><p>New puzzles unlock as you win.</p><div id="level-grid" class="level-grid"></div></section></div>
-    </div>
-    <section class="controls">
-      <div class="instruction"><span class="finger">↗</span><span id="instruction-text">Draw one bumper, then drop the ball.</span></div>
-      <div class="button-row"><button id="reset-button" class="secondary-button">↻ <span>RESET</span></button><button id="drop-button" class="primary-button">DROP IT <span>↓</span></button></div>
-      <div class="level-dots" id="level-dots"></div>
+
+    <section id="level-select-screen" class="menu-screen level-select-screen hidden" aria-label="Level select">
+      <div class="menu-heading">
+        <button id="levels-home-button" class="text-button" type="button">‹ HOME</button>
+        <div><small>CHOOSE YOUR PUZZLE</small><b id="select-progress">01 / 20 UNLOCKED</b></div>
+      </div>
+      <div class="world-select-card green-world-card">
+        <div class="world-select-heading"><i></i><div><small>WORLD 01</small><b>NEON GREEN</b></div><span>01–10</span></div>
+        <div id="green-level-grid" class="level-grid"></div>
+      </div>
+      <div class="world-select-card cyan-world-card">
+        <div class="world-select-heading"><i></i><div><small>WORLD 02</small><b>NEON CYAN</b></div><span>11–20</span></div>
+        <div id="cyan-level-grid" class="level-grid"></div>
+      </div>
+      <p class="locked-note">Win a puzzle to unlock the next one. Completed puzzles can be replayed.</p>
     </section>
-    <footer>DRAG A LINE TO ADD A BUMPER · GUIDE THE ORB HOME</footer>
+
+    <section id="game-screen" class="game-screen hidden">
+      <section class="level-row">
+        <div><small id="chapter-label">WORLD 01 · PUZZLE 01 / 20</small><h1 id="level-title">First Bounce</h1></div>
+        <div class="level-tools"><div class="level-nav"><button id="game-home-button" class="text-button" type="button">HOME</button><button id="game-levels-button" class="level-picker-button" type="button">LEVELS</button></div><div class="attempts" id="attempts" aria-label="Attempts"></div></div>
+      </section>
+      <div class="board-wrap"><canvas id="board" aria-label="Chaos Drop game board"></canvas>
+        <div id="toast" class="toast" aria-live="polite"></div>
+        <div id="result" class="result hidden"><div class="result-card"><div id="result-icon" class="result-icon">✦</div><h2 id="result-title">Nice!</h2><p id="result-copy"></p><button id="result-button" class="primary-button" type="button">NEXT LEVEL <span>→</span></button><button id="result-secondary-button" class="text-button result-secondary" type="button">LEVEL SELECT</button></div></div>
+      </div>
+      <section class="controls">
+        <div class="instruction"><span class="finger">↗</span><span id="instruction-text">Draw one bumper, then drop the ball.</span></div>
+        <div class="button-row"><button id="reset-button" class="secondary-button restart-button" type="button">↻ <span>RESTART</span></button><button id="drop-button" class="primary-button" type="button">DROP IT <span>↓</span></button></div>
+        <div class="level-dots" id="level-dots"></div>
+      </section>
+      <footer>DRAG A LINE TO ADD A BUMPER · GUIDE THE ORB HOME</footer>
+    </section>
   </main>
   <script src="game.js"></script>
 </body>

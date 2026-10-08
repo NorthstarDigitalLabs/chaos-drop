@@ -10,15 +10,19 @@ class Element {
     this.innerHTML = '';
     this.disabled = false;
     this.classes = new Set();
+    this.attributes = {};
     this.classList = {
       add: (name) => this.classes.add(name),
       remove: (name) => this.classes.delete(name),
-      contains: (name) => this.classes.has(name)
+      contains: (name) => this.classes.has(name),
+      toggle: (name,on) => { if(on)this.classes.add(name);else this.classes.delete(name);return on; }
     };
   }
+  set className(value) { this.classes=new Set(String(value).split(/\s+/).filter(Boolean)); }
   addEventListener(name, callback) { this.listeners[name] = callback; }
   append(child) { this.children.push(child); }
   replaceChildren() { this.children = []; }
+  setAttribute(name,value) { this.attributes[name]=value; }
   setPointerCapture() {}
   getBoundingClientRect() { return { left: 0, top: 0, width: 360, height: 560 }; }
   click() { this.listeners.click?.({}); }
@@ -26,10 +30,10 @@ class Element {
 }
 
 const ids = [
+  'home-screen','level-select-screen','game-screen','play-button','home-levels-button','levels-home-button','sound-toggle','home-progress','select-progress','green-level-grid','cyan-level-grid','game-home-button','game-levels-button',
   'board', 'level-title', 'chapter-label', 'best-score', 'attempts', 'level-dots',
-  'level-picker-button', 'level-picker', 'level-grid', 'level-picker-close',
   'instruction-text', 'drop-button', 'reset-button', 'toast', 'result', 'result-icon',
-  'result-title', 'result-copy', 'result-button'
+  'result-title', 'result-copy', 'result-button','result-secondary-button'
 ];
 const elements = Object.fromEntries(ids.map((id) => [id, new Element()]));
 const savedProgress = new Map([['chaosDropLevel','9'],['chaosDropUnlocked','10']]);
@@ -70,7 +74,7 @@ const sandbox = {
 };
 
 let source = fs.readFileSync('app/src/main/assets/game.js', 'utf8');
-const bootMarker = '  resize();renderUi();requestAnimationFrame(frame);\n})();';
+const bootMarker = '  resize();renderUi();updateSoundToggle();\n  setScreen(\'home\');\n})();';
 assert.ok(source.includes(bootMarker), 'game boot marker exists for physics harness');
 source = source.replace(bootMarker, `
   globalThis.__chaosDropTest = {
@@ -80,7 +84,7 @@ source = source.replace(bootMarker, `
     draw,
     showWonTarget() { state = 'won'; draw(); },
     playLine(index,line,fps=60) {
-      levelIndex=index; resetLevel();
+      levelIndex=index;screen='game';resetLevel();
       const [x1,y1,x2,y2]=line;
       onPointerDown({clientX:x1,clientY:y1,pointerId:7});
       onPointerUp({clientX:x2,clientY:y2,pointerId:7});
@@ -100,9 +104,14 @@ source = source.replace(bootMarker, `
       const px=(s[0]+s[2])/2,py=(s[1]+s[3])/2;ball={x:px-nx*10,y:py-ny*10,vx:nx*100,vy:ny*100,r:11};
       physics(.016);return brokenSegments.has(0);
     },
+    failLastAttempt(index) {
+      levelIndex=index;screen='game';attemptsLeft=0;state='running';elapsed=0;
+      const [x,y,w,h]=levels[index].hazards[0];ball={x:x+w/2,y:y+h/2,vx:0,vy:0,r:11};
+      physics(.016);return state;
+    },
     getState() { return { levelIndex, state, highestUnlockedLevel, score, theme:theme().name, title:level().name }; },
     clickNext() { ui.resultButton.listeners?.click?.({}); },
-    selectLevel(index) { levelIndex = index; resetLevel(); },
+    selectLevel(index) { levelIndex = index;screen='game';resetLevel(); },
     step(dt) { if (state === 'running') physics(dt); return state; }
   };
 ${bootMarker}`);
@@ -132,7 +141,7 @@ const witnesses = [
   { name: 'Cyan Finale', line: [178.42, 232.54, 170.62, 172.5] }
 ];
 
-assert.equal(game.levels.length, witnesses.length, 'all 20 alpha puzzles are covered');
+assert.equal(game.levels.length, witnesses.length, 'all 20 puzzles are covered');
 const worldBoundaries = [
   [1, 'NEON GREEN'], [5, 'NEON GREEN'], [10, 'NEON GREEN'], [11, 'NEON CYAN'], [20, 'NEON CYAN']
 ];
@@ -164,6 +173,11 @@ for(const index of [7,11]){
 }
 for(const index of [14,17,19]) assert.ok(game.levels[index].breakables.length,'breakable objects appear in later puzzles');
 assert.equal(game.breakableHit(14),true,'Glass Breaker removes a struck breakable rail');
+assert.equal(game.failLastAttempt(2),'lost','a final hazard impact enters the quick retry state');
+assert.match(elements['result-title'].textContent,/So close/,'failure provides clear immediate feedback');
+assert.match(elements['result-button'].innerHTML,/RETRY LEVEL/,'failure offers a one-tap restart');
+elements['result-button'].click();
+assert.equal(game.getState().state,'ready','retry restarts the puzzle immediately');
 const stylesheet = fs.readFileSync('app/src/main/assets/style.css', 'utf8');
 assert.match(stylesheet, /\.primary-button[^{]*\{[^}]*var\(--world-accent\)/, 'interactive controls inherit the active world palette');
 
@@ -230,7 +244,8 @@ vm.runInNewContext(source,reloadSandbox,{filename:'game-reload.js'});
 assert.match(reloadElements['chapter-label'].textContent,/WORLD 02 · PUZZLE 11 \/ 20/,'reopening the game restores the saved current level');
 assert.equal(reloadElements['level-title'].textContent,'Blue Horizon','reopening restores the correct puzzle');
 assert.equal(reloadVariables['--world-accent'],game.worldThemes[1].accent,'reopened progress restores the cyan palette');
-reloadElements['level-picker-button'].click();
-assert.equal(reloadElements['level-grid'].children.length,20,'reopened level selector contains every puzzle');
-assert.equal(reloadElements['level-grid'].children[10].disabled,false,'reopened progress keeps Level 11 unlocked');
-console.log('All 20 alpha puzzles have verified player-drawn winning routes; progression, Level 10→11 theme transition, local save data, moving gates, spring launches, breakable rails, and WINNER glow are verified.');
+reloadElements['home-levels-button'].click();
+assert.equal(reloadElements['green-level-grid'].children.length,10,'reopened level selector contains the green world');
+assert.equal(reloadElements['cyan-level-grid'].children.length,10,'reopened level selector contains the cyan world');
+assert.equal(reloadElements['cyan-level-grid'].children[0].disabled,false,'reopened progress keeps Level 11 unlocked');
+console.log('All 20 beta puzzles have verified player-drawn winning routes; menu and progression state, Level 10→11 theme transition, local save data, moving gates, spring launches, breakable rails, and WINNER glow are verified.');

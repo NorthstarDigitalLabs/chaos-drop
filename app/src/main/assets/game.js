@@ -6,14 +6,23 @@
   const canvas = document.getElementById('board');
   const ctx = canvas.getContext('2d');
   const ui = {
+    homeScreen: document.getElementById('home-screen'),
+    levelSelectScreen: document.getElementById('level-select-screen'),
+    gameScreen: document.getElementById('game-screen'),
+    playButton: document.getElementById('play-button'),
+    homeLevelsButton: document.getElementById('home-levels-button'),
+    levelsHomeButton: document.getElementById('levels-home-button'),
+    soundToggle: document.getElementById('sound-toggle'),
+    homeProgress: document.getElementById('home-progress'),
+    selectProgress: document.getElementById('select-progress'),
+    greenLevelGrid: document.getElementById('green-level-grid'),
+    cyanLevelGrid: document.getElementById('cyan-level-grid'),
+    gameHomeButton: document.getElementById('game-home-button'),
+    gameLevelsButton: document.getElementById('game-levels-button'),
     title: document.getElementById('level-title'),
     chapter: document.getElementById('chapter-label'),
     best: document.getElementById('best-score'),
     attempts: document.getElementById('attempts'),
-    levelPickerButton: document.getElementById('level-picker-button'),
-    levelPicker: document.getElementById('level-picker'),
-    levelGrid: document.getElementById('level-grid'),
-    levelPickerClose: document.getElementById('level-picker-close'),
     dots: document.getElementById('level-dots'),
     hint: document.getElementById('instruction-text'),
     drop: document.getElementById('drop-button'),
@@ -23,7 +32,8 @@
     resultIcon: document.getElementById('result-icon'),
     resultTitle: document.getElementById('result-title'),
     resultCopy: document.getElementById('result-copy'),
-    resultButton: document.getElementById('result-button')
+    resultButton: document.getElementById('result-button'),
+    resultSecondaryButton: document.getElementById('result-secondary-button')
   };
 
   const levels = [
@@ -61,6 +71,14 @@
   const savedUnlock = Math.max(1, Number(localStorage.getItem('chaosDropUnlocked') || 1) || 1);
   let highestUnlockedLevel = Math.min(levels.length, Math.max(savedUnlock, Math.min(savedLevelIndex + 1, levels.length)));
   let levelIndex = Math.min(savedLevelIndex, highestUnlockedLevel - 1, levels.length - 1);
+  let screen = 'home';
+  let soundEnabled = localStorage.getItem('chaosDropSound') !== 'off';
+  let completedLevels = new Set();
+  try {
+    const savedCompleted=JSON.parse(localStorage.getItem('chaosDropCompleted')||'[]');
+    if(Array.isArray(savedCompleted))savedCompleted.forEach(i=>{if(Number.isInteger(i)&&i>=0&&i<levels.length)completedLevels.add(i);});
+  } catch (_) { /* Ignore corrupt save data and keep the unlocked-level fallback. */ }
+  for(let i=0;i<highestUnlockedLevel-1;i++)completedLevels.add(i);
   let attemptsLeft = 3;
   let state = 'ready';
   let ball = { x:180, y:42, vx:0, vy:0, r:11 };
@@ -75,6 +93,10 @@
   let particles = [];
   let trail = [];
   let brokenSegments = new Set();
+  let audioContext = null;
+  let lastContactSoundAt = -1;
+  let winFxUntil = 0;
+  let frameScheduled = false;
 
   function level() { return levels[levelIndex]; }
   function worldThemeForLevel(levelNumber) {
@@ -82,6 +104,93 @@
     return worldThemes[Math.min(index,worldThemes.length-1)];
   }
   function theme() { return worldThemeForLevel(levelIndex+1); }
+  function updateSoundToggle() {
+    ui.soundToggle.textContent=soundEnabled?'♪ SOUND ON':'♪ SOUND OFF';
+    ui.soundToggle.setAttribute?.('aria-pressed',String(soundEnabled));
+    ui.soundToggle.setAttribute?.('aria-label',soundEnabled?'Turn sound off':'Turn sound on');
+  }
+  function playSfx(kind) {
+    if(!soundEnabled)return;
+    try {
+      const AudioCtor=window.AudioContext||window.webkitAudioContext;
+      if(!AudioCtor)return;
+      if(!audioContext)audioContext=new AudioCtor();
+      if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
+      const now=audioContext.currentTime+.005;
+      const cues={
+        ui:[[560,620,.055,'sine',0]],
+        impact:[[210,115,.075,'triangle',0]],
+        spring:[[260,560,.12,'triangle',0]],
+        spark:[[740,1040,.11,'sine',0]],
+        winner:[[390,820,.22,'triangle',0]],
+        complete:[[523,523,.12,'sine',.25],[659,659,.14,'sine',.36],[784,988,.22,'triangle',.50]],
+        fail:[[280,185,.17,'triangle',0]],
+        retry:[[330,490,.08,'sine',0]]
+      };
+      for(const [startHz,endHz,duration,wave,delay] of cues[kind]||[]){
+        const oscillator=audioContext.createOscillator(),gain=audioContext.createGain();
+        const start=now+delay;
+        oscillator.type=wave;
+        oscillator.frequency.setValueAtTime(startHz,start);
+        oscillator.frequency.exponentialRampToValueAtTime(Math.max(1,endHz),start+duration);
+        gain.gain.setValueAtTime(.045,start);
+        gain.gain.exponentialRampToValueAtTime(.001,start+duration);
+        oscillator.connect(gain);gain.connect(audioContext.destination);
+        oscillator.start(start);oscillator.stop(start+duration+.01);
+      }
+    } catch (_) { /* Audio is optional; gameplay continues if Web Audio is unavailable. */ }
+  }
+  function bindClick(element,handler) {
+    element.addEventListener('click',event=>{playSfx('ui');handler(event);});
+  }
+  function renderLevelSelect() {
+    ui.selectProgress.textContent=`${String(highestUnlockedLevel).padStart(2,'0')} / 20 UNLOCKED · ${String(completedLevels.size).padStart(2,'0')} CLEARED`;
+    for(const [grid,first,last] of [[ui.greenLevelGrid,0,10],[ui.cyanLevelGrid,10,20]]){
+      grid.replaceChildren();
+      for(let index=first;index<last;index++){
+        const tile=document.createElement('button'),status=document.createElement('span');
+        const unlocked=index<highestUnlockedLevel,completed=completedLevels.has(index);
+        tile.type='button';tile.className=`level-tile ${unlocked?'unlocked':''} ${completed?'completed':''} ${index===levelIndex?'current':''} ${unlocked?'':'locked'}`;
+        tile.disabled=!unlocked;
+        const number=document.createElement('span');number.textContent=String(index+1).padStart(2,'0');
+        status.className='tile-status';status.textContent=completed?'✓ CLEAR':unlocked?'UNLOCKED':'LOCKED';
+        tile.append(number,status);
+        tile.setAttribute?.('aria-label',`Level ${index+1}: ${levels[index].name}, ${completed?'completed':unlocked?'unlocked':'locked'}`);
+        bindClick(tile,()=>{if(unlocked)selectLevel(index);});
+        grid.append(tile);
+      }
+    }
+  }
+  function setScreen(next) {
+    screen=next;
+    ui.homeScreen.classList.toggle('hidden',next!=='home');
+    ui.levelSelectScreen.classList.toggle('hidden',next!=='levels');
+    ui.gameScreen.classList.toggle('hidden',next!=='game');
+    ui.playButton.innerHTML=(levelIndex>0||completedLevels.size>0?'CONTINUE':'START GAME')+' <span>→</span>';
+    ui.homeProgress.textContent=`LEVEL ${String(levelIndex+1).padStart(2,'0')} · ${theme().name} WORLD · ${completedLevels.size}/20 CLEARED`;
+    if(next==='levels')renderLevelSelect();
+    if(next==='game'){renderUi();scheduleFrame();}
+  }
+  function selectLevel(index) {
+    if(index<0||index>=highestUnlockedLevel)return;
+    levelIndex=index;localStorage.setItem('chaosDropLevel',String(index));
+    attemptsLeft=3;setScreen('game');resetLevel();
+  }
+  updateSoundToggle();
+  bindClick(ui.playButton,()=>{attemptsLeft=3;setScreen('game');newTry();});
+  bindClick(ui.homeLevelsButton,()=>setScreen('levels'));
+  bindClick(ui.levelsHomeButton,()=>setScreen('home'));
+  bindClick(ui.gameHomeButton,()=>setScreen('home'));
+  bindClick(ui.gameLevelsButton,()=>setScreen('levels'));
+  ui.soundToggle.addEventListener('click',()=>{
+    soundEnabled=!soundEnabled;localStorage.setItem('chaosDropSound',soundEnabled?'on':'off');updateSoundToggle();
+    if(soundEnabled)playSfx('ui');
+  });
+  window.chaosDropHandleBack=()=>{
+    if(screen==='game'){setScreen('levels');return true;}
+    if(screen==='levels'){setScreen('home');return true;}
+    return false;
+  };
   function resize() {
     const rect = canvas.getBoundingClientRect();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -89,8 +198,8 @@
     canvas.height = Math.max(1, Math.round(rect.height * dpr));
     ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
   }
-  new ResizeObserver(resize).observe(canvas);
-  window.addEventListener('orientationchange', resize);
+  new ResizeObserver(()=>{resize();scheduleFrame();}).observe(canvas);
+  window.addEventListener('orientationchange',()=>{resize();scheduleFrame();});
 
   function boardPoint(event) {
     const r = canvas.getBoundingClientRect();
@@ -119,78 +228,60 @@
     }
     ui.dots.replaceChildren();
     for (let i=0;i<levels.length;i++) {
-      const d=document.createElement('i'); d.className=`level-dot ${i===levelIndex?'active':''} ${i<highestUnlockedLevel?'unlocked':''}`; ui.dots.append(d);
+      const d=document.createElement('i'); d.className=`level-dot ${i===levelIndex?'active':''} ${i<highestUnlockedLevel?'unlocked':''} ${completedLevels.has(i)?'completed':''}`; ui.dots.append(d);
     }
-    ui.levelPickerButton.textContent=`LEVELS · ${String(levelIndex+1).padStart(2,'0')}/${String(levels.length).padStart(2,'0')}`;
-    ui.levelPickerButton.disabled=state==='running';
     ui.drop.disabled = state === 'running' || state === 'won' || state === 'lost';
     ui.drop.innerHTML = state === 'running' ? 'IN MOTION <span>◌</span>' : 'DROP IT <span>↓</span>';
     ui.hint.textContent = state === 'running' ? 'Watch the chain reaction!' : state === 'ready' ? 'Draw one bumper, then drop the ball.' : 'Reset to try a new bumper.';
   }
   function newTry() {
     state='ready'; ball={x:180,y:42,vx:0,vy:0,r:11}; drawnBumper=null; dragStart=null; dragNow=null;
-    collected=new Set(); brokenSegments=new Set(); elapsed=0; trail=[]; particles=[]; ui.result.classList.add('hidden'); renderUi();
+    collected=new Set(); brokenSegments=new Set(); elapsed=0; lastContactSoundAt=-1; trail=[]; particles=[]; winFxUntil=0; ui.result.classList.add('hidden'); renderUi();
+    if(screen==='game'){draw();}
   }
-  function resetLevel() { attemptsLeft=3; score=0; newTry(); showToast('Fresh board. Find a new route!'); }
+  function resetLevel() { attemptsLeft=3; score=0; newTry(); showToast('Fresh board. Find a new route!'); playSfx('retry'); }
   function finish(won) {
     state = won ? 'won' : (attemptsLeft <= 0 ? 'lost' : 'ready');
     if (won) {
       const points=100 + collected.size*50 + attemptsLeft*25;
       score += points;
       best=Math.max(best,score);
+      completedLevels.add(levelIndex);
       highestUnlockedLevel=Math.max(highestUnlockedLevel,Math.min(levels.length,levelIndex+2));
       localStorage.setItem('chaosDropBest',String(best));
       localStorage.setItem('chaosDropLevel',String(Math.min(levelIndex+1,levels.length-1)));
       localStorage.setItem('chaosDropUnlocked',String(highestUnlockedLevel));
+      localStorage.setItem('chaosDropCompleted',JSON.stringify([...completedLevels].sort((a,b)=>a-b)));
       spawnParticles(level().target,510,theme().accent,24);
+      winFxUntil=performance.now()+760;playSfx('winner');playSfx('complete');
       ui.resultIcon.textContent='✦'; ui.resultTitle.textContent='Beautiful chaos!';
       ui.resultCopy.textContent=`Puzzle cleared · ${collected.size}/3 sparks · +${points} points`;
-      if (levelIndex===levels.length-1) ui.resultButton.innerHTML='PLAY AGAIN <span>↻</span>';
+      if (levelIndex===levels.length-1) ui.resultButton.innerHTML='CAMPAIGN COMPLETE <span>✦</span>';
       else if (Math.floor((levelIndex+1)/10)>Math.floor(levelIndex/10)) {
         const nextTheme=worldThemeForLevel(levelIndex+2);
         ui.resultButton.innerHTML=`ENTER ${nextTheme.name} <span>✦</span>`;
-      } else ui.resultButton.innerHTML='NEXT PUZZLE <span>→</span>';
+      } else ui.resultButton.innerHTML='NEXT LEVEL <span>→</span>';
+      ui.resultSecondaryButton.textContent='LEVEL SELECT';
       ui.result.classList.remove('hidden');
     } else if (attemptsLeft <= 0) {
+      playSfx('fail');
       ui.resultIcon.textContent='↻'; ui.resultTitle.textContent='So close!';
-      ui.resultCopy.textContent='The orb missed the cup. Reset the puzzle and try another bumper.';
-      ui.resultButton.innerHTML='TRY AGAIN <span>↻</span>';
+      ui.resultCopy.textContent='The orb missed WINNER. Reset and try a different line.';
+      ui.resultButton.innerHTML='RETRY LEVEL <span>↻</span>';ui.resultSecondaryButton.textContent='LEVEL SELECT';
       ui.result.classList.remove('hidden');
     } else {
-      showToast('Oops! Draw a new bumper and try again.');
+      playSfx('fail');showToast('Missed. Try a different line.');
     }
-    renderUi();
+    renderUi();scheduleFrame();
   }
-
-  function openLevelPicker() {
-    ui.levelGrid.replaceChildren();
-    levels.forEach((puzzle,index)=>{
-      const tile=document.createElement('button');
-      tile.type='button'; tile.className=`level-tile ${index===levelIndex?'current':''} ${index<highestUnlockedLevel?'':'locked'}`;
-      tile.textContent=String(index+1).padStart(2,'0'); tile.disabled=index>=highestUnlockedLevel;
-      tile.setAttribute?.('aria-label',index<highestUnlockedLevel?`Level ${index+1}: ${puzzle.name}`:`Level ${index+1} locked`);
-      tile.addEventListener('click',()=>{
-        if(index>=highestUnlockedLevel)return;
-        levelIndex=index; localStorage.setItem('chaosDropLevel',String(index));
-        ui.levelPicker.classList.add('hidden'); resetLevel();
-      });
-      ui.levelGrid.append(tile);
-    });
-    ui.levelPicker.classList.remove('hidden');
-  }
-  ui.levelPickerButton.addEventListener('click',openLevelPicker);
-  ui.levelPickerClose.addEventListener('click',()=>ui.levelPicker.classList.add('hidden'));
-  ui.levelPicker.addEventListener('click',(event)=>{
-    if(event.target===ui.levelPicker)ui.levelPicker.classList.add('hidden');
-  });
 
   function onPointerDown(e) {
-    if (state!=='ready') return;
+    if (screen!=='game'||state!=='ready') return;
     const p=boardPoint(e);
     if (p.y<74 || p.y>500) return;
     dragStart=p; dragNow=p; canvas.setPointerCapture(e.pointerId);
   }
-  function onPointerMove(e) { if (dragStart) dragNow=boardPoint(e); }
+  function onPointerMove(e) { if (dragStart) {dragNow=boardPoint(e);scheduleFrame();} }
   function onPointerUp(e) {
     if (!dragStart) return;
     const p=boardPoint(e); const dx=p.x-dragStart.x; const dy=p.y-dragStart.y;
@@ -202,29 +293,34 @@
       showToast('Bumper placed! Now drop it.');
     }
     dragStart=null; dragNow=null;
+    scheduleFrame();
   }
   canvas.addEventListener('pointerdown',onPointerDown);
   canvas.addEventListener('pointermove',onPointerMove);
   canvas.addEventListener('pointerup',onPointerUp);
   canvas.addEventListener('pointercancel',onPointerUp);
 
-  ui.drop.addEventListener('click',()=>{
+  bindClick(ui.drop,()=>{
     if (state!=='ready') return;
     if (!drawnBumper) { showToast('Draw your bumper first!'); return; }
     attemptsLeft--; state='running'; ball={x:180,y:42,vx:0,vy:5,r:11}; elapsed=0; trail=[]; renderUi();
+    scheduleFrame();
   });
-  ui.reset.addEventListener('click',()=>{ if (state!=='running') resetLevel(); else showToast('Let the orb finish this run first.'); });
+  ui.reset.addEventListener('click',resetLevel);
   ui.resultButton.addEventListener('click',()=>{
     if (state==='won') {
       const previousWorld=Math.floor(levelIndex/10);
-      if (levelIndex===levels.length-1) { levelIndex=0; score=0; }
+      if (levelIndex===levels.length-1) {playSfx('ui');setScreen('levels');return;}
       else levelIndex++;
       localStorage.setItem('chaosDropLevel',String(levelIndex)); attemptsLeft=3; newTry();
       if (Math.floor(levelIndex/10)>previousWorld) showToast(`${theme().name} world unlocked!`);
-    } else if (state==='lost') resetLevel();
+    } else if (state==='lost') {resetLevel();return;}
+    else return;
+    playSfx('ui');
   });
+  ui.resultSecondaryButton.addEventListener('click',()=>{playSfx('ui');setScreen('levels');});
 
-  function collideSegment(s, restitution=.72) {
+  function collideSegment(s, restitution=.72,sound='impact') {
     const dx=s[2]-s[0], dy=s[3]-s[1];
     const l2=dx*dx+dy*dy || 1;
     const t=Math.max(0,Math.min(1,((ball.x-s[0])*dx+(ball.y-s[1])*dy)/l2));
@@ -235,6 +331,7 @@
     ball.x=px+nx*(ball.r+.2); ball.y=py+ny*(ball.r+.2);
     const vn=ball.vx*nx+ball.vy*ny;
     if (vn<0) { ball.vx-=(1+restitution)*vn*nx; ball.vy-=(1+restitution)*vn*ny; ball.vx*=.985; ball.vy*=.985; }
+    if(elapsed-lastContactSoundAt>.12){playSfx(sound);lastContactSoundAt=elapsed;}
     spawnParticles(px,py,theme().accent,4);
     return true;
   }
@@ -252,7 +349,7 @@
     l.gates?.forEach(g=>segments.push(movingGateSegment(g)));
     if (drawnBumper) segments.push([drawnBumper.x1,drawnBumper.y1,drawnBumper.x2,drawnBumper.y2]);
     segments.forEach(s=>collideSegment(s));
-    l.springPads?.forEach(s=>collideSegment(s,1.08));
+    l.springPads?.forEach(s=>collideSegment(s,1.08,'spring'));
     l.breakables?.forEach((s,i)=>{
       if(!brokenSegments.has(i)&&collideSegment(s,0.78)){
         brokenSegments.add(i); spawnParticles((s[0]+s[2])/2,(s[1]+s[3])/2,'#ffc66d',18);
@@ -265,7 +362,7 @@
     });
     l.stars.forEach(([x,y],i)=>{
       if (!collected.has(i) && Math.hypot(ball.x-x,ball.y-y)<ball.r+14) {
-        collected.add(i); score+=10; spawnParticles(x,y,'#ffe270',12); showToast('Spark collected! +10');
+        collected.add(i); score+=10; spawnParticles(x,y,'#ffe270',12); playSfx('spark');showToast('Spark collected! +10');
       }
     });
     if (state!=='running') return;
@@ -316,6 +413,10 @@
     ctx.beginPath();ctx.roundRect(tx-48,487,96,57,14);ctx.fill();ctx.shadowBlur=0;
     ctx.shadowColor=theme().accent;ctx.shadowBlur=winnerGlow?28:14;ctx.strokeStyle=theme().accent;ctx.lineWidth=winnerGlow?4:3;ctx.beginPath();ctx.moveTo(tx-39,492);ctx.lineTo(tx+39,492);ctx.stroke();ctx.shadowBlur=winnerGlow?18:0;
     ctx.fillStyle=theme().accentGlow;ctx.fillRect(tx-40,494,80,43);ctx.shadowBlur=0;ctx.fillStyle=theme().bright;ctx.font='800 10px system-ui';ctx.textAlign='center';ctx.fillText('WINNER',tx,520);
+    const winRemaining=winFxUntil-performance.now();
+    if(state==='won'&&winRemaining>0){
+      const progress=1-winRemaining/760;ctx.save();ctx.globalAlpha=(1-progress)*.8;ctx.strokeStyle=theme().bright;ctx.lineWidth=3;ctx.shadowColor=theme().accent;ctx.shadowBlur=18;ctx.beginPath();ctx.arc(tx,516,18+progress*58,0,Math.PI*2);ctx.stroke();ctx.restore();
+    }
     trail.forEach((p,i)=>{ctx.fillStyle=`rgba(${theme().trail},${(i/trail.length)*.28})`;ctx.beginPath();ctx.arc(p.x,p.y,3+i*.45,0,Math.PI*2);ctx.fill();});
     if(state==='running'||state==='impact'){
       const shine=ctx.createRadialGradient(ball.x-4,ball.y-5,1,ball.x,ball.y,ball.r+6);shine.addColorStop(0,'#fff');shine.addColorStop(.25,theme().ballMid);shine.addColorStop(1,theme().ballShade);
@@ -323,9 +424,16 @@
     }
     particles=particles.filter(p=>p.life>0);particles.forEach(p=>{p.life-=1/60;p.x+=p.vx/60;p.y+=p.vy/60;p.vy+=100/60;ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;
   }
-  function frame(t) {
-    if(!lastFrame)lastFrame=t;const dt=Math.min((t-lastFrame)/1000,.035);lastFrame=t;
-    if(state==='running')physics(dt);draw();requestAnimationFrame(frame);
+  function scheduleFrame() {
+    if(screen!=='game'||frameScheduled)return;
+    frameScheduled=true;requestAnimationFrame(frame);
   }
-  resize();renderUi();requestAnimationFrame(frame);
+  function frame(t) {
+    frameScheduled=false;if(screen!=='game')return;
+    if(!lastFrame)lastFrame=t;const dt=Math.min((t-lastFrame)/1000,.035);lastFrame=t;
+    if(state==='running')physics(dt);draw();
+    if(state==='running'||particles.length||winFxUntil>performance.now())scheduleFrame();
+  }
+  resize();renderUi();updateSoundToggle();
+  setScreen('home');
 })();

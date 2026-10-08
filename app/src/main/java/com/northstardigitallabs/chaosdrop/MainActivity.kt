@@ -31,6 +31,10 @@ class MainActivity : Activity() {
 
     @Deprecated("Deprecated in Android but still used for WebView back navigation")
     override fun onBackPressed() {
-        if (::game.isInitialized && game.canGoBack()) game.goBack() else super.onBackPressed()
+        if (::game.isInitialized) {
+            game.evaluateJavascript("window.chaosDropHandleBack ? window.chaosDropHandleBack() : false") { handled ->
+                if (handled != "true") super.onBackPressed()
+            }
+        } else super.onBackPressed()
     }
 }
