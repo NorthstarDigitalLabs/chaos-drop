@@ -1,0 +1,37 @@
+name: Jemsbotique zero-credit vertical video
+on:
+  push:
+    branches: [jemsbotique-media]
+    paths:
+      - 'campaigns/generate-ornament-video.sh'
+      - '.github/workflows/jemsbotique-media.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  render:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: jemsbotique-media
+          persist-credentials: true
+      - name: Install ffmpeg and fonts
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+      - name: Render Jemsbotique vertical video
+        run: bash campaigns/generate-ornament-video.sh
+      - name: Commit publicly hosted MP4 on isolated media branch
+        run: |
+          git config user.name "Jemsbotique Video Factory"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add media/jemsbotique_ornament_vote_17s.mp4
+          if git diff --cached --quiet; then
+            echo "Media file already current"
+          else
+            git commit -m "Render 17-second Jemsbotique original product poll MP4"
+            git push origin HEAD:jemsbotique-media
+          fi
